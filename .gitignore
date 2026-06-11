@@ -1,0 +1,7 @@
+.Rproj.user/
+data/
+phenolite.Rproj
+stan/*
+!stan/*.stan
+output/
+.gitignore.swp
