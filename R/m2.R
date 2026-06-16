@@ -64,7 +64,7 @@ agg_cnts = zf_cnts |>
 
 infl = 4
 
-infill = data.table(wk = seq(1,52, by = 1/4), 
+infill = data.table(wk = seq(1,52, by = 1/infl), 
                     n_i = 0, y = 0,
                     og = FALSE) |> 
   sbt(!(wk %% 1 == 0))
@@ -89,7 +89,7 @@ f2 = m2$sample(data = dl, parallel_chains = 4,
 
 p_dt = f2$summary('proba') |> 
   qDT() |> 
-  mtt(d = as.Date("2026-01-01") + 1:(fnrow(to_model)) * (7/4) - 3.5/4 + 2) |> 
+  mtt(d = as.Date("2026-01-01") + 1:(fnrow(to_model)) * (7/4) - 3.5/4 ) |> 
   cbind(to_model |> slt(wk))
 
 zf_cnts[k>0] |> roworder(wk) |> sbt(prop > .5)
@@ -103,9 +103,9 @@ obs_prop = to_model[(og)] |>
 plot_input |> 
   ggplot(aes(d)) + 
   geom_point(aes(y = prop, color = yr, group = yr)) + 
-  # geom_line(data = obs_prop,
-  #            aes(y = p),
-  #           col = "blue") + 
+  geom_line(data = obs_prop,
+             aes(y = p),
+            col = "blue") +
   scale_color_manual(values = pals::parula(8)[c(1,3,5,7)]) + 
   scale_x_date(labels = scales::label_date("%b"),
                breaks = as.Date(paste0("2026-", 1:12, "-01"))) + 
