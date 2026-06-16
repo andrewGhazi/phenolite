@@ -5,3 +5,6 @@ stan/*
 !stan/*.stan
 output/
 .gitignore.swp
+src/cch/
+notes/
+
