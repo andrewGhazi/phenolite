@@ -15,6 +15,14 @@ library(collapse)
 print("compiling...")
 source("binom_gp_ll.R")
 
+to_fct = \(x) {
+  x |> 
+    fctr() |> 
+    fct_lump_min(5) |> 
+    fct_infreq() |> 
+    fct_rev() 
+}
+
 print("reading...")
 # d = fread("data/anecdata_export_EwA_Pheno_Lite_2026-05-28T20-24-36-075Z.csv") |> 
 #   janitor::clean_names()
@@ -37,7 +45,6 @@ genera = d |>
   roworder(-N) |> 
   na_omit() |> 
   sbt(N >= 30) # can select from genera with >= 30 observations
-
 
 # input = list(genus = "Quercus", flw_phenos = "Flowers")
 # input$lf_phenos = "Leaves"
@@ -73,7 +80,9 @@ ui <- fluidPage(
 
         # Show a plot of the generated distribution
         mainPanel(
-           plotOutput("distPlot")
+           plotOutput("activityCurve"),
+           plotOutput("obs_plot")
+          # plotOutput('combinedPlot')
         )
     )
 )
@@ -81,39 +90,10 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram
 server <- function(input, output) {
   
- 
-  
-  # oak_obs = oaks |> 
-  #   mtt(yr = year(date),
-  #       wk = lubridate::week(date),
-  #       of_or_pl = (flower_phenophase %like% "Pollen release") | 
-  #         (flower_phenophase %like% "Open flowers")) |> 
-  #   gby(yr, wk) |> 
-  #   smr(prop = fmean(of_or_pl),
-  #       k = fsum(of_or_pl),
-  #       n = fnobs(of_or_pl)) |> 
-  #   mtt(from_zf = FALSE)
-  # 
-  # zf_cnts = join(z_df, oak_obs, 
-  #                on = c("yr", "wk"), 
-  #                how = "anti") |> 
-  #   rbind(oak_obs) |> 
-  #   roworder(yr, wk) |> 
-  #   qDT()
-  # 
-  # dodge = 1
-  # 
-  # yr_diff = fmax(zf_cnts$yr) - fmin(zf_cnts$yr)
-  # 
-  # plot_input = zf_cnts |> 
-  #   mtt(d = as.IDate(paste0("2026-01-01")) + 7*wk - 3.5 + 
-  #         dodge * (yr - 2023) - (yr_diff*dodge/2)) |> 
-  #   mtt(yr = factor(yr)) 
-  
-
-  output$distPlot <- renderPlot({ 
+  output$activityCurve <- renderPlot({ 
     
     print('subsetting...')
+    
     sel_obs = d |>
       sbt(genus %like% input$genus)
     
@@ -230,6 +210,7 @@ server <- function(input, output) {
     tstring = paste0(input$genus, " - ", 
                      paste0(unlist(c(input$flw_phenos, input$lf_phenos)), 
                             collapse = paste0(' ', input$log_fun, ' ')))
+    
     p = plot_input |> 
       ggplot(aes(d, prop)) + 
       geom_point(aes(color = yr, group = yr)) + 
@@ -239,7 +220,8 @@ server <- function(input, output) {
                    breaks = as.Date(paste0("2026-", 1:12, "-15"))) + 
       ylim(c(0,1)) + 
       theme_bw() + 
-      theme(panel.grid.minor.x = element_blank()) + 
+      theme(panel.grid.minor.x = element_blank(),
+            plot.margin = unit(c(.3,.3,.3,1), "cm")) + 
       labs(x = NULL,
            y = 'proportion',
            color = NULL,
@@ -248,6 +230,77 @@ server <- function(input, output) {
     print('donesk...')
     p
     
+  })
+  
+  output$obs_plot <- renderPlot({
+    
+    sel_obs = d |>
+      sbt(genus %like% input$genus)
+    
+    logical_fun = if (input$log_fun == "AND") {
+      matrixStats::rowProds 
+    } else {
+      matrixStats::rowSums2 
+    }
+    
+    if (!is.null(input$flw_phenos)) {
+      
+      flw_cols = uniq_flw |> 
+        sbt(flw_pheno %iin% input$flw_phenos) |> 
+        get_elem("cln_flw")
+      
+      flw_mat = sel_obs |> 
+        slt(flw_cols) |> 
+        qM() 
+      
+    } else {
+      flw_mat = matrix(TRUE, nrow = fnrow(sel_obs))
+    }
+    
+    if (!is.null(input$lf_phenos)) {
+      lf_cols = uniq_lf |> 
+        sbt(lf_pheno %iin% input$lf_phenos) |> 
+        get_elem("cln_lf")
+      
+      lf_mat = sel_obs |> 
+        slt(lf_cols) |> 
+        qM()
+      
+    } else {
+      lf_mat = matrix(TRUE, nrow = fnrow(sel_obs))
+    }
+    
+    cnd_vec = cbind(flw_mat, lf_mat) |> 
+      logical_fun() 
+    
+    sel_obs = sel_obs |> 
+      mtt(meets_cnd = as.logical(cnd_vec)) 
+    
+    # Start to differ from above starting here. 
+    
+    obs_df = sel_obs |> 
+      mtt(gs_fct = to_fct(species_2), 
+          d_hide = as.Date("2026-01-01") + 7*wk - 3.5)
+    
+    tstring = paste0(input$genus, " - ", 
+                     paste0(unlist(c(input$flw_phenos, input$lf_phenos)), 
+                            collapse = paste0(' ', input$log_fun, ' ')))
+    
+    p2 = ggplot(obs_df, aes(d_hide, gs_fct)) + 
+      geom_point(pch = 15, 
+                 aes(color = meets_cnd),
+                 position = position_jitter(width=.5, height = .2),
+                 size = .6) + 
+      scale_color_manual(values = c("grey", "black")) + 
+      labs(color = "Specified\ncondition",
+           x = NULL,
+           y = NULL,
+           title = tstring) + 
+      scale_x_date(labels = scales::label_date("%b"),
+                   breaks = as.Date(paste0("2026-", 1:12, "-15"))) + 
+      theme_bw() + 
+      theme(panel.grid.minor.x = element_blank(),
+            plot.margin = unit(c(.3,.3,.3,1), "cm")) 
   })
 }
 
