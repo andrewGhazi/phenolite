@@ -29,6 +29,8 @@ to_fct = \(x) {
 
 dodge = 0
 
+yr_diff = fmax(oaks$yr) - fmin(oaks$yr)
+
 oak_obs = oaks |> 
   mtt(yr = year(date),
       wk = lubridate::week(date),
