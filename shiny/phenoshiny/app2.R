@@ -12,6 +12,7 @@ library(ggplot2)
 library(data.table)
 library(collapse)
 library(ggtext)
+library(forcats)
 
 print("compiling...")
 source("binom_gp_ll.R")
@@ -223,7 +224,8 @@ server <- function(input, output) {
       theme_bw() + 
       theme(panel.grid.minor.x = element_blank(),
             axis.title.y = element_text(margin = margin(0,0,-10,0, 'pt')),
-            plot.title = element_markdown()) + 
+            plot.title = element_markdown(),
+            text = element_text(size=18)) + 
       labs(x = NULL,
            y = 'proportion',
            color = NULL,
@@ -300,7 +302,8 @@ server <- function(input, output) {
       theme(panel.grid.minor.x = element_blank(),
             plot.margin = unit(c(.3,.3,.3,1), "cm"),
             axis.text.y = element_markdown(),
-            plot.title = element_markdown()) 
+            plot.title = element_markdown(),
+            text = element_text(size=18)) 
     
     g1 = ggplotGrob(p1)
     g2 = ggplotGrob(p2)
