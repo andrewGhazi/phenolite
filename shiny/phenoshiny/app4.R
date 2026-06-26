@@ -22,7 +22,7 @@ print("reading...")
 # d = fread("data/anecdata_export_EwA_Pheno_Lite_2026-05-28T20-24-36-075Z.csv") |> 
 #   janitor::clean_names()
 
-d = fread("data/adj_2026-05-28T20-24-36-075Z.csv")
+d = fread("data/adj_2026-06-26T23-02-37-068Z.csv")
 
 uniq_lf = fread("data/uniq_lf.tsv") 
 
@@ -328,7 +328,7 @@ server <- function(input, output) {
       geom_jitter(aes(alpha = value),
                   width = .5,
                   height = .2,
-                  size = .7,
+                  size = .8,
                   pch = 15) + 
       facet_wrap(ncol = 1, 
                  vars(yr)) + 
@@ -340,6 +340,7 @@ server <- function(input, output) {
       theme(plot.title = element_markdown(),
             panel.grid.major.y = element_blank(),
             panel.spacing = unit(1, "pt"),
+            text = element_text(size=18),
             strip.text = element_text(margin = margin(0,0,0,0))) + 
       scale_x_date(labels = scales::label_date("%b"),
                    breaks = as.Date(paste0("2026-", 1:12, "-15"))) 
