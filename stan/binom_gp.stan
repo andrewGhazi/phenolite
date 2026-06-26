@@ -49,13 +49,19 @@ parameters {
 }
 
 transformed parameters {
-  cholesky_factor_cov[52] L = getL(ell, wk_sigma);
-  vector[52] z = mdivide_left_tri_low(L, wkv);
-  
-  vector[N] lin_pred = intercept + wkv[wk_i] + yrwkv;
+  // cholesky_factor_cov[52] L = getL(ell, wk_sigma);
+  // vector[52] z = mdivide_left_tri_low(L, wkv);
+  // 
+  // vector[N] lin_pred = intercept + wkv[wk_i] + yrwkv;
 }
 
 model {
+
+  
+  matrix[52,52] L = getL(ell, wk_sigma);
+  vector[52] z = mdivide_left_tri_low(L, wkv);
+  
+  vector[N] lin_pred = intercept + wkv[wk_i] + yrwkv;
   
   z ~ std_normal();
   
