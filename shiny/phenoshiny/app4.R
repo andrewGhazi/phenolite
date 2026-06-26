@@ -41,9 +41,21 @@ genera = d |>
   na_omit() |> 
   sbt(N >= 30) # can select from genera with >= 30 observations
 
+gs_df = fread("data/Genus_species.tsv")
+
+pheno_df = rowbind(
+ list(
+  uniq_flw |> slt(full_nm = flw_pheno, cln_nm = cln_flw),
+  uniq_lf |> slt(full_nm = lf_pheno, cln_nm = cln_lf)
+   
+ ) 
+)
+
 # input = list(genus = "Quercus", flw_phenos = "Flowers")
 # input$lf_phenos = "Leaves"
 # input$log_fun = "AND"
+# input$sflw_phenos = "Flowers"
+# input$slf_phenos = "Leaves"
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -67,22 +79,41 @@ ui <- fluidPage(
                                         selected = "Leaves",
                                         multiple = TRUE),
                             selectInput('log_fun',
-                                        label = h5("Combine conditions with:"),
+                                        label = h5("Combine phenophase selection with:"),
                                         choices = c("AND", "OR"),
-                                        selected = "AND")),
+                                        selected = "AND",
+                                        selectize = FALSE)),
                mainPanel(plotOutput('combinedPlot',
-                                    height = '800px')),
+                                    height = '800px'))
                
       ),
-      tabPanel("Species view")
-    )
-
+      tabPanel("Species view",
+               sidebarPanel(selectInput("species",
+                                        label = h4("Select Species:"),
+                                        choices = gs_df$binom,
+                                        selected = "Quercus rubra"),
+                            selectInput('sflw_phenos',
+                                        label = h4("Select flower phenophase:"),
+                                        choices = uniq_flw$flw_pheno,
+                                        selected = 'Flowers',
+                                        multiple = TRUE),
+                            selectInput('slf_phenos',
+                                        label = h4("Select leaf phenophase:"),
+                                        choices = uniq_lf$lf_pheno,
+                                        selected = "Leaves",
+                                        multiple = TRUE)),
+               mainPanel(plotOutput('species_plot', 
+                                    height = '600px')))
+               
+    ),
 )
+
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
   
   output$combinedPlot <- renderPlot({ 
+    
     
     sel_obs = d |>
       sbt(genus %like% input$genus)
@@ -219,7 +250,8 @@ server <- function(input, output) {
     
     p1 = plot_input |> 
       ggplot(aes(d, prop)) + 
-      geom_point(aes(color = yr, group = yr)) + 
+      geom_point(aes(color = yr, group = yr),
+                 pch = 15) + 
       geom_line(aes(y = fitted, color = yr)) +
       # geom_line(data = avg_df,
       #           aes(y = fitted), color = 'red') + 
@@ -272,6 +304,45 @@ server <- function(input, output) {
     
     grid::grid.newpage()
     grid::grid.draw(rbind(g1, g2))
+  })
+  
+  output$species_plot <- renderPlot({
+    
+    sphenos = pheno_df |> 
+      sbt(full_nm %iin% c(input$sflw_phenos,
+                          input$slf_phenos)) |> 
+      getElement('cln_nm') 
+    
+    pd = d |> 
+      sbt(species_2 %==% input$species) |> 
+      # slt(sp = species_2, date, open_flowers, fruits, leaf_buds_swelling) |> 
+      slt(c("species_2", "date", sphenos)) |> 
+      frename(sp = "species_2") |> 
+      pivot(ids = 1:2) |> 
+      mtt(yr = lubridate::year(date)) 
+    
+    lubridate::year(pd$date) <- 2026
+    
+    pd |> 
+      ggplot(aes(date, variable)) + 
+      geom_jitter(aes(alpha = value),
+                  width = .5,
+                  height = .2,
+                  size = .7,
+                  pch = 15) + 
+      facet_wrap(ncol = 1, 
+                 vars(yr)) + 
+      labs(y = NULL,
+           title = paste0("*", input$species, "*"),
+           x = NULL,
+           alpha = "observed") + 
+      theme_bw() + 
+      theme(plot.title = element_markdown(),
+            panel.grid.major.y = element_blank(),
+            panel.spacing = unit(1, "pt"),
+            strip.text = element_text(margin = margin(0,0,0,0))) + 
+      scale_x_date(labels = scales::label_date("%b"),
+                   breaks = as.Date(paste0("2026-", 1:12, "-15"))) 
   })
 }
 
