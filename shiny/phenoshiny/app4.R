@@ -50,35 +50,33 @@ ui <- fluidPage(
 
     # Application title
     titlePanel("Phenolite"),
-
-    # Sidebar with a slider input for number of bins 
-    sidebarLayout(
-        sidebarPanel(
-          selectInput("genus", 
-                      label = h4("Select Genus:"),
-                      choices = genera$genus),
-          selectInput('flw_phenos',
-                      label = h4("Select flower phenophase:"),
-                      choices = uniq_flw$flw_pheno,
-                      selected = 'Flowers',
-                      multiple = TRUE),
-          selectInput('lf_phenos',
-                      label = h4("Select leaf phenophase:"),
-                      choices = uniq_lf$lf_pheno,
-                      selected = "Leaves",
-                      multiple = TRUE),
-          selectInput('log_fun',
-                      label = h5("Combine conditions with:"),
-                      choices = c("AND", "OR"),
-                      selected = "AND")
-        ),
-
-        # Show a plot of the generated distribution
-        mainPanel(
-          plotOutput('combinedPlot',
-                     height = '800px')
-        )
+    
+    tabsetPanel(
+      tabPanel("Genus view", 
+               sidebarPanel(selectInput("genus", 
+                                        label = h4("Select Genus:"),
+                                        choices = genera$genus),
+                            selectInput('flw_phenos',
+                                        label = h4("Select flower phenophase:"),
+                                        choices = uniq_flw$flw_pheno,
+                                        selected = 'Flowers',
+                                        multiple = TRUE),
+                            selectInput('lf_phenos',
+                                        label = h4("Select leaf phenophase:"),
+                                        choices = uniq_lf$lf_pheno,
+                                        selected = "Leaves",
+                                        multiple = TRUE),
+                            selectInput('log_fun',
+                                        label = h5("Combine conditions with:"),
+                                        choices = c("AND", "OR"),
+                                        selected = "AND")),
+               mainPanel(plotOutput('combinedPlot',
+                                    height = '800px')),
+               
+      ),
+      tabPanel("Species view")
     )
+
 )
 
 # Define server logic required to draw a histogram
@@ -239,57 +237,6 @@ server <- function(input, output) {
            y = 'proportion',
            color = NULL,
            title = tstring)
-    
-  
-    sel_obs = d |>
-      sbt(genus %like% input$genus)
-    
-    logical_fun = if (input$log_fun == "AND") {
-      matrixStats::rowProds 
-    } else {
-      matrixStats::rowSums2 
-    }
-    
-    if (!is.null(input$flw_phenos)) {
-      
-      flw_cols = uniq_flw |> 
-        sbt(flw_pheno %iin% input$flw_phenos) |> 
-        get_elem("cln_flw")
-      
-      flw_mat = sel_obs |> 
-        slt(flw_cols) |> 
-        qM() 
-      
-    } else {
-      if (input$log_fun == "AND") {
-        flw_mat = matrix(TRUE, nrow = fnrow(sel_obs))
-      } else {
-        flw_mat = matrix(FALSE, nrow = fnrow(sel_obs))
-      }
-    }
-    
-    if (!is.null(input$lf_phenos)) {
-      lf_cols = uniq_lf |> 
-        sbt(lf_pheno %iin% input$lf_phenos) |> 
-        get_elem("cln_lf")
-      
-      lf_mat = sel_obs |> 
-        slt(lf_cols) |> 
-        qM()
-      
-    } else {
-      if (input$log_fun == "AND") {
-        lf_mat = matrix(TRUE, nrow = fnrow(sel_obs))
-      } else {
-        lf_mat = matrix(FALSE, nrow = fnrow(sel_obs))
-      }
-    }
-    
-    cnd_vec = cbind(flw_mat, lf_mat) |> 
-      logical_fun() 
-    
-    sel_obs = sel_obs |> 
-      mtt(meets_cnd = as.logical(cnd_vec)) 
     
     # Start to differ from above starting here. 
     
