@@ -1,0 +1,11 @@
+
+
+podman run -it -v ~/projects/phenolite/stan/:/home/rocker/stan docker.io/rocker/r2u:22.04
+
+Rscript -e "install.packages('rstan')"
+
+sed -i 's/^CXXFLAGS.*/CXXFLAGS = -g -O2 $(LTO)/' /usr/lib/R/etc/Makeconf
+
+Rscript -e "library(rstan); m = stan_model('/home/rocker/stan/binom_gp.stan'); saveRDS(m, '/home/rocker/stan/binom_gp.rds')"
+
+cp ~/projects/phenolite/stan/binom_gp.rds ~/projects/phenolite/shiny/phenoshiny/
