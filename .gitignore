@@ -7,4 +7,6 @@ output/
 .gitignore.swp
 src/cch/
 notes/
+shiny/phenoshiny/*.rds
+
 
