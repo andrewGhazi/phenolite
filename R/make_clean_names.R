@@ -46,7 +46,7 @@ d = fread(f) |>
 
 d_spec = d |> 
   slt(species = species_2) |> 
-  funique() |> 
+  fcount() |> 
   mtt(sp_pcs = strsplit(species, " "),
       n_pc = lengths(sp_pcs))
 
@@ -69,7 +69,7 @@ gs_df = d_spec |>
   sbt(n_pc %==% 2) |> 
   mtt(g = map_chr(sp_pcs, 1) |> str_to_title(),
       s = map_chr(sp_pcs, 2) |> tolower()) |> 
-  slt(species, g,s) |> 
+  slt(species, g,s, N) |> 
   funique() |> 
   roworder(g)
 
