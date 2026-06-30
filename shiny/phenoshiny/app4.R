@@ -51,11 +51,13 @@ pheno_df = rowbind(
  ) 
 )
 
-# input = list(genus = "Quercus", flw_phenos = "Flowers")
-# input$lf_phenos = "Leaves"
-# input$log_fun = "AND"
-# input$sflw_phenos = "Flowers"
-# input$slf_phenos = "Leaves"
+input = list(genus = "Quercus", flw_phenos = "Flowers")
+input$lf_phenos = "Leaves"
+input$log_fun = "AND"
+input$sflw_phenos = "Flowers"
+input$slf_phenos = "Leaves"
+input$yr_rng = c(2023, 2026)
+input$syr_rng = c(2023, 2026)
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -82,7 +84,15 @@ ui <- fluidPage(
                                         label = h5("Combine phenophase selection with:"),
                                         choices = c("AND", "OR"),
                                         selected = "AND",
-                                        selectize = FALSE)),
+                                        selectize = FALSE),
+                            sliderInput('yr_rng', 
+                                        label = h5("Year range:"),
+                                        min = 2023, 
+                                        max = latest_wk$yr,
+                                        value = c(2023, 2026),
+                                        step = 1,
+                                        ticks = TRUE,
+                                        sep = "")),
                mainPanel(plotOutput('combinedPlot',
                                     height = '800px'))
                
@@ -101,7 +111,15 @@ ui <- fluidPage(
                                         label = h4("Select leaf phenophase:"),
                                         choices = uniq_lf$lf_pheno,
                                         selected = "Leaves",
-                                        multiple = TRUE)),
+                                        multiple = TRUE),
+                            sliderInput('syr_rng', 
+                                        label = h5("Year range:"),
+                                        min = 2023, 
+                                        max = latest_wk$yr,
+                                        value = c(2023, 2026),
+                                        step = 1,
+                                        ticks = TRUE,
+                                        sep = "")),
                mainPanel(plotOutput('species_plot', 
                                     height = '600px')))
                
@@ -116,6 +134,7 @@ server <- function(input, output) {
     
     
     sel_obs = d |>
+      sbt(yr >= input$yr_rng[1] & yr <= input$yr_rng[2]) |> 
       sbt(genus %like% input$genus)
     
     logical_fun = if (input$log_fun == "AND") {
@@ -165,7 +184,7 @@ server <- function(input, output) {
     sel_obs = sel_obs |> 
       mtt(meets_cnd = as.logical(cnd_vec)) 
     
-    z_df = expand.grid(yr = 2023:latest_wk$yr,
+    z_df = expand.grid(yr = input$yr_rng[1]:input$yr_rng[2],
                        wk = 1:52) |>
       mtt(prop = 0, n = 0, k = 0) |>
       sbt(!(yr == latest_wk$yr & wk > latest_wk$wk)) |>
@@ -237,7 +256,7 @@ server <- function(input, output) {
     
     dodge = 1
     
-    yr_diff = fmax(zf_cnts$yr) - fmin(zf_cnts$yr)
+    yr_diff = max(zf_cnts$yr) - min(zf_cnts$yr)
     
     plot_input = zf_cnts |> 
       mtt(d = as.IDate("2026-01-01") + 7*wk - 3.5 + 
@@ -248,14 +267,22 @@ server <- function(input, output) {
                      paste0(unlist(c(input$flw_phenos, input$lf_phenos)), 
                             collapse = paste0(' ', input$log_fun, ' ')))
     
+    # complicated method to get the colors so they don't change when your change
+    # the year range
+    col_dt = data.table(yr = 2023:latest_wk$yr) |> 
+      mtt(i = floor(seq(1, 88, length.out = diff(range(yr)) + 1)),
+          col = pals::parula(100)[i])
+    
+    col_vec = col_dt$col |> setNames(col_dt$yr)
+    
     p1 = plot_input |> 
       ggplot(aes(d, prop)) + 
       geom_point(aes(color = yr, group = yr),
                  pch = 15) + 
-      geom_line(aes(y = fitted, color = yr)) +
       # geom_line(data = avg_df,
-      #           aes(y = fitted), color = 'red') + 
-      scale_color_manual(values = pals::parula(8)[c(1,3,5,7)]) + 
+      #           aes(y = fitted), color = 'red') +
+      geom_line(aes(y = fitted, color = yr)) +
+      scale_color_manual(values = col_vec) + 
       scale_x_date(labels = scales::label_date("%b"),
                    breaks = as.Date(paste0("2026-", 1:12, "-15"))) + 
       ylim(c(0,1)) + 
@@ -314,18 +341,19 @@ server <- function(input, output) {
       getElement('cln_nm') 
     
     pd = d |> 
+      sbt(yr >= input$syr_rng[1] & yr <= input$syr_rng[2]) |> 
       sbt(species_2 %==% input$species) |> 
-      # slt(sp = species_2, date, open_flowers, fruits, leaf_buds_swelling) |> 
       slt(c("species_2", "date", sphenos)) |> 
       frename(sp = "species_2") |> 
       pivot(ids = 1:2) |> 
-      mtt(yr = lubridate::year(date)) 
+      mtt(yr = lubridate::year(date),
+          obs_ind = fctr(c("not observed", "observed")[value+1])) 
     
     lubridate::year(pd$date) <- 2026
     
     pd |> 
       ggplot(aes(date, variable)) + 
-      geom_jitter(aes(alpha = value),
+      geom_jitter(aes(alpha = obs_ind),
                   width = .5,
                   height = .2,
                   size = .8,
@@ -335,7 +363,7 @@ server <- function(input, output) {
       labs(y = NULL,
            title = paste0("*", input$species, "*"),
            x = NULL,
-           alpha = "observed") + 
+           alpha = NULL) + 
       theme_bw() + 
       theme(plot.title = element_markdown(),
             panel.grid.major.y = element_blank(),
