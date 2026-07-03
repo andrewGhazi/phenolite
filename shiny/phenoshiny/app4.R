@@ -6,6 +6,7 @@ library(data.table)
 library(collapse)
 library(ggtext)
 library(forcats)
+library(patchwork)
 
 source("load_rstan.R")
 
@@ -120,10 +121,8 @@ ui <- fluidPage(
                                         step = 1,
                                         ticks = TRUE,
                                         sep = "")),
-               mainPanel(plotOutput('species_activity',
-                                    height = '300px'),
-                         plotOutput('species_plot', 
-                                    height = '500px')))
+               mainPanel(plotOutput('species_cmbn', 
+                                    height = '800px')))
                
     ),
 )
@@ -139,7 +138,18 @@ server <- function(input, output) {
     
     n_phenos = length(jphenos)
     
-    stopifnot("species activity curve can only be shown with one or two phenophases selected" = n_phenos <= 2)
+    # stopifnot("species activity curve can only be shown with one or two phenophases selected" = n_phenos <= 2)
+    if (n_phenos > 2) {
+      err_df = data.frame(x = 1, y = 1, 
+                          l = "Error: species activity curve can only be shown with one or two phenophases selected")
+
+      err_plot = ggplot(err_df, aes(x,y)) + 
+        geom_text(color = "red",
+                  aes(label = l)) + 
+        theme_void()
+      
+      return(err_plot)
+    }
     
     sphenos = pheno_df |> 
       sbt(full_nm %iin% jphenos) |> 
@@ -237,7 +247,8 @@ server <- function(input, output) {
     yr_diff = max(zf_cnts$yr) - min(zf_cnts$yr)
     
     zf_cnts = zf_cnts |> 
-      join(fit_by_pheno, on = c("variable", "yr", "wk")) |> 
+      join(fit_by_pheno, on = c("variable", "yr", "wk"),
+           verbose = FALSE) |> 
       mtt(d_hide = as.Date("2026-01-01") + 7*wk - 3.5 + 
             dodge * (yr - 2023) - (yr_diff*dodge/2),
           pheno_yr = paste(variable, yr, sep = "-"))
@@ -252,11 +263,11 @@ server <- function(input, output) {
     
     pal_l = list(pals::parula, pals::magma)
     
-    cmap_df = expand.grid(yr = seq(input$syr_rng[1],
-                                   input$syr_rng[2]),
+    cmap_df = expand.grid(yr = seq(2023, input$syr_rng[2]),
                           ph = sphenos) |> 
       mtt(ph_yr = paste(ph, yr, sep = '-'),
-          col_val = as.vector(mapply(FUN = get_pal, pal_l, c(88, 90))))
+          col_val = as.vector(mapply(FUN = get_pal, pal_l, c(88, 90)))) |> 
+      sbt(yr >= input$syr_rng[1] & yr <= input$syr_rng[2])
     
     cmap_v = cmap_df$col_val
     names(cmap_v) = cmap_df$ph_yr
@@ -265,23 +276,82 @@ server <- function(input, output) {
       ggplot(aes(d_hide, p)) + 
       geom_line(aes(color = pheno_yr, y = fitted),
                 lwd = .7) + 
-      geom_point(aes(color = pheno_yr)) + 
+      geom_point(aes(color = pheno_yr),
+                 pch = 15) + 
       scale_color_manual(values = cmap_v) + 
       theme_dark() + 
       labs(x = NULL, y = 'proportion',
            title = paste0("*", input$species, "*"),
            color = NULL) + 
       scale_x_date(labels = scales::label_date("%b"),
-                   breaks = as.Date(paste0("2026-", 1:12, "-15"))) + 
+                   breaks = as.Date(paste0("2026-", 1:12, "-15")),
+                   limits = c(as.Date("2025-12-28"),
+                              as.Date("2027-01-02"))) + 
       theme(panel.grid.minor.x = element_blank(),
             axis.title.y = element_text(margin = margin(0,0,0,0, 'pt')),
             legend.byrow = TRUE,
-            legend.position = 'top',
+            legend.position = 'bottom',
             plot.title = element_markdown(),
             text = element_text(size=18)) 
   }
   
-  output$species_activity <- renderPlot(get_species_act())
+  get_species_dots = function() {
+    sphenos = pheno_df |> 
+      sbt(full_nm %iin% c(input$sflw_phenos,
+                          input$slf_phenos)) |> 
+      getElement('cln_nm') 
+    
+    pd = d |> 
+      sbt(yr >= input$syr_rng[1] & yr <= input$syr_rng[2]) |> 
+      sbt(species_2 %==% input$species) |> 
+      slt(c("species_2", "date", "yr", "wk", sphenos)) |> 
+      frename(sp = "species_2") |> 
+      pivot(ids = 1:4) |> 
+      mtt(obs_ind = fctr(c("not observed", "observed")[value+1])) |> 
+      roworder(obs_ind)
+    
+    lubridate::year(pd$date) <- 2026
+    
+    pd |> 
+      ggplot(aes(date, variable)) + 
+      geom_jitter(aes(color = obs_ind),
+                  width = .5,
+                  height = .2,
+                  size = .8,
+                  pch = 15) + 
+      facet_wrap(ncol = 1, 
+                 vars(yr)) + 
+      labs(y = NULL,
+           title = NULL,
+           x = NULL,
+           color = NULL) + 
+      theme_bw() + 
+      theme(plot.title = element_markdown(),
+            panel.grid.major.y = element_blank(),
+            panel.spacing = unit(1, "pt"),
+            legend.position = 'bottom',
+            text = element_text(size=18),
+            strip.text = element_text(margin = margin(0,0,0,0))) + 
+      scale_color_manual(values = c("grey", "black")) + 
+      scale_x_date(labels = scales::label_date("%b"),
+                   breaks = as.Date(paste0("2026-", 1:12, "-15")),
+                   expand = expansion(add = 10)) 
+    
+  }
+  
+  get_species_cmbn = function() {
+    
+    p1 = get_species_act()
+    p2 = get_species_dots()
+    
+    g1 = ggplotGrob(p1)
+    g2 = ggplotGrob(p2)
+    
+    grid::grid.newpage()
+    grid::grid.draw(rbind(g1, g2))
+  }
+  
+  output$species_cmbn <- renderPlot(get_species_cmbn())
   
   output$combinedPlot <- renderPlot({ 
     
@@ -492,48 +562,6 @@ server <- function(input, output) {
     grid::grid.draw(rbind(g1, g2))
   })
   
-  output$species_plot <- renderPlot({
-    
-    sphenos = pheno_df |> 
-      sbt(full_nm %iin% c(input$sflw_phenos,
-                          input$slf_phenos)) |> 
-      getElement('cln_nm') 
-    
-    pd = d |> 
-      sbt(yr >= input$syr_rng[1] & yr <= input$syr_rng[2]) |> 
-      sbt(species_2 %==% input$species) |> 
-      slt(c("species_2", "date", "yr", "wk", sphenos)) |> 
-      frename(sp = "species_2") |> 
-      pivot(ids = 1:4) |> 
-      mtt(obs_ind = fctr(c("not observed", "observed")[value+1])) |> 
-      roworder(obs_ind)
-    
-    lubridate::year(pd$date) <- 2026
-    
-    pd |> 
-      ggplot(aes(date, variable)) + 
-      geom_jitter(aes(color = obs_ind),
-                  width = .5,
-                  height = .2,
-                  size = .8,
-                  pch = 15) + 
-      facet_wrap(ncol = 1, 
-                 vars(yr)) + 
-      labs(y = NULL,
-           title = NULL,
-           x = NULL,
-           color = NULL) + 
-      theme_bw() + 
-      theme(plot.title = element_markdown(),
-            panel.grid.major.y = element_blank(),
-            panel.spacing = unit(1, "pt"),
-            legend.position = 'bottom',
-            text = element_text(size=18),
-            strip.text = element_text(margin = margin(0,0,0,0))) + 
-      scale_color_manual(values = c("grey", "black")) + 
-      scale_x_date(labels = scales::label_date("%b"),
-                   breaks = as.Date(paste0("2026-", 1:12, "-15"))) 
-  })
 }
 
 # Run the application 
