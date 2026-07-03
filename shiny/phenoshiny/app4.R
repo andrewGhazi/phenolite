@@ -164,7 +164,7 @@ server <- function(input, output) {
       mtt(obs_ind = fctr(c("not observed", "observed")[value+1])) |> 
       roworder(obs_ind)
     
-    z_df = expand.grid(yr = input$yr_rng[1]:input$yr_rng[2],
+    z_df = expand.grid(yr = input$syr_rng[1]:input$syr_rng[2],
                        wk = 1:52) |>
       mtt(prop = 0, n = 0, k = 0) |>
       sbt(!(yr == latest_wk$yr & wk > latest_wk$wk)) |>
@@ -240,7 +240,8 @@ server <- function(input, output) {
         slt(yr, wk, fitted)
     }
     
-    fit_by_pheno = zf_cnts[,.(fit_params = .(fit_curve(.SD))), by = "variable"][,rbindlist(fit_params), by = variable]
+    fit_by_pheno = zf_cnts[yr >= input$syr_rng[1] & yr <= input$syr_rng[2],
+                           .(fit_params = .(fit_curve(.SD))), by = "variable"][,rbindlist(fit_params), by = variable]
     
     dodge = 1
     
@@ -263,10 +264,12 @@ server <- function(input, output) {
     
     pal_l = list(pals::parula, pals::magma)
     
-    cmap_df = expand.grid(yr = seq(2023, input$syr_rng[2]),
+    cmap_df = expand.grid(yr = seq(2023, latest_wk$yr),
                           ph = sphenos) |> 
       mtt(ph_yr = paste(ph, yr, sep = '-'),
-          col_val = as.vector(mapply(FUN = get_pal, pal_l, c(88, 90)))) |> 
+          col_val = as.vector(mapply(FUN = get_pal, 
+                                     pal_l[1:length(sphenos)], 
+                                     c(88, 90)[1:length(sphenos)]))) |> 
       sbt(yr >= input$syr_rng[1] & yr <= input$syr_rng[2])
     
     cmap_v = cmap_df$col_val
@@ -284,15 +287,15 @@ server <- function(input, output) {
            title = paste0("*", input$species, "*"),
            color = NULL) + 
       scale_x_date(labels = scales::label_date("%b"),
-                   breaks = as.Date(paste0("2026-", 1:12, "-15")),
-                   limits = c(as.Date("2025-12-28"),
-                              as.Date("2027-01-02"))) + 
+                   breaks = as.Date(paste0("2026-", 1:12, "-15"))) + 
       theme(panel.grid.minor.x = element_blank(),
             axis.title.y = element_text(margin = margin(0,0,0,0, 'pt')),
             legend.byrow = TRUE,
             legend.position = 'bottom',
             plot.title = element_markdown(),
-            text = element_text(size=18)) 
+            text = element_text(size=18),
+            panel.background = element_rect(fill = 'grey65'),
+            panel.grid = element_line(color = 'grey55')) 
   }
   
   get_species_dots = function() {
@@ -334,8 +337,7 @@ server <- function(input, output) {
             strip.text = element_text(margin = margin(0,0,0,0))) + 
       scale_color_manual(values = c("grey", "black")) + 
       scale_x_date(labels = scales::label_date("%b"),
-                   breaks = as.Date(paste0("2026-", 1:12, "-15")),
-                   expand = expansion(add = 10)) 
+                   breaks = as.Date(paste0("2026-", 1:12, "-15"))) 
     
   }
   
@@ -344,11 +346,13 @@ server <- function(input, output) {
     p1 = get_species_act()
     p2 = get_species_dots()
     
-    g1 = ggplotGrob(p1)
-    g2 = ggplotGrob(p2)
-    
-    grid::grid.newpage()
-    grid::grid.draw(rbind(g1, g2))
+    p1 / p2 + plot_layout(heights = c(1.5,3))
+    # 
+    # g1 = ggplotGrob(p1)
+    # g2 = ggplotGrob(p2)
+    # 
+    # grid::grid.newpage()
+    # grid::grid.draw(rbind(g1, g2))
   }
   
   output$species_cmbn <- renderPlot(get_species_cmbn())
