@@ -328,6 +328,7 @@ server <- function(input, output) {
            title = NULL,
            x = NULL,
            color = NULL) + 
+      guides(color = guide_legend(override.aes = list(size = 3))) + 
       theme_bw() + 
       theme(plot.title = element_markdown(),
             panel.grid.major.y = element_blank(),
@@ -517,11 +518,13 @@ server <- function(input, output) {
       scale_x_date(labels = scales::label_date("%b"),
                    breaks = as.Date(paste0("2026-", 1:12, "-15"))) + 
       ylim(c(0,1)) + 
-      theme_bw() + 
+      theme_dark() + 
       theme(panel.grid.minor.x = element_blank(),
             axis.title.y = element_text(margin = margin(0,0,0,0, 'pt'),
                                         vjust = -13),
             plot.title = element_markdown(),
+            panel.background = element_rect(fill = 'grey65'),
+            panel.grid = element_line(color = 'grey55'),
             text = element_text(size=18)) + 
       labs(x = NULL,
            y = 'proportion',
@@ -546,10 +549,11 @@ server <- function(input, output) {
                  aes(color = obs_ind),
                  position = position_jitter(width=.5, height = .2),
                  size = .6) + 
-      scale_color_manual(values = c("grey", "black")) + 
       labs(color = NULL,
            x = NULL,
            y = NULL) + 
+      guides(color = guide_legend(override.aes = list(size = 3))) + 
+      scale_color_manual(values = c("grey", "black")) + 
       scale_x_date(labels = scales::label_date("%b"),
                    breaks = as.Date(paste0("2026-", 1:12, "-15"))) + 
       theme_bw() + 
@@ -559,11 +563,13 @@ server <- function(input, output) {
             plot.title = element_markdown(),
             text = element_text(size=18)) 
     
-    g1 = ggplotGrob(p1)
-    g2 = ggplotGrob(p2)
+    # g1 = ggplotGrob(p1)
+    # g2 = ggplotGrob(p2)
+    # 
+    # grid::grid.newpage()
+    # grid::grid.draw(rbind(g1, g2))
     
-    grid::grid.newpage()
-    grid::grid.draw(rbind(g1, g2))
+    p1 / p2 + plot_layout(heights = c(1.5, 3))
   })
   
 }
