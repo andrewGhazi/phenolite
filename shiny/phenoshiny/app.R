@@ -23,7 +23,15 @@ print("reading...")
 # d = fread("data/anecdata_export_EwA_Pheno_Lite_2026-05-28T20-24-36-075Z.csv") |> 
 #   janitor::clean_names()
 
-d = fread("data/adj_2026-06-26T23-02-37-068Z.csv")
+dpath = "data/adj_2026-06-26T23-02-37-068Z.csv"
+
+d = fread(dpath)
+
+dl_date = dpath |> 
+  basename() |> 
+  gsub(".*_", "", x = _) |> 
+  gsub("T.*", "", x = _) |> 
+  as.Date()
 
 uniq_lf = fread("data/uniq_lf.tsv") 
 
@@ -95,11 +103,13 @@ ui <- fluidPage(
                                         ticks = TRUE,
                                         sep = ""),
                             helpText("Lines in the top panel represent the posterior mode of a temporal Gaussian Process with a global yearly trend, (year:week)-specific random intercepts, and periodic boundary conditions. See full model specification here: ",
-                                     a("Stan file", href = "https://github.com/andrewGhazi/phenolite/blob/main/shiny/phenoshiny/binom_gp.stan"))
+                                     a("model file", href = "https://github.com/andrewGhazi/phenolite/blob/main/shiny/phenoshiny/binom_gp.stan"))
                ),
                
                mainPanel(plotOutput('combinedPlot',
-                                    height = '800px')
+                                    height = '800px'),
+                         p("Data were provided by Earthwise Aware and the participants who contribute to its Biodiversity and Climate participatory science program."),
+                         p("Earthwise Aware ", paste0(lubridate::year(dl_date), ".")," PhenoLite Data. Data type: Raw Data, Phenology Data. ", min(d$date), "-", max(d$date), " for all sites. Somerville, Massachusetts, USA. Data set accessed ", dl_date, " at earthwiseaware.org.")
                )
                
       ),
@@ -127,9 +137,11 @@ ui <- fluidPage(
                                         ticks = TRUE,
                                         sep = ""),
                            helpText("Lines in the top panel represent the posterior mode of a temporal Gaussian Process with a global yearly trend, (year:week)-specific random intercepts, and periodic boundary conditions. See full model specification here: ",
-                                     a("Stan file", href = "https://github.com/andrewGhazi/phenolite/blob/main/shiny/phenoshiny/binom_gp.stan"))),
+                                     a("model file", href = "https://github.com/andrewGhazi/phenolite/blob/main/shiny/phenoshiny/binom_gp.stan"))),
                mainPanel(plotOutput('species_cmbn', 
-                                    height = '800px')))
+                                    height = '800px'),
+                         p("Data were provided by Earthwise Aware and the participants who contribute to its Biodiversity and Climate participatory science program."),
+                         p("Earthwise Aware ", paste0(lubridate::year(dl_date), ".")," PhenoLite Data. Data type: Raw Data, Phenology Data. ", min(d$date), "-", max(d$date), " for all sites. Somerville, Massachusetts, USA. Data set accessed ", dl_date, " at earthwiseaware.org.")))
                
     ),
 )
