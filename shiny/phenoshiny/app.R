@@ -93,9 +93,14 @@ ui <- fluidPage(
                                         value = c(2023, 2026),
                                         step = 1,
                                         ticks = TRUE,
-                                        sep = "")),
+                                        sep = ""),
+                            helpText("Lines in the top panel represent the posterior mode of a temporal Gaussian Process with a global yearly trend, (year:week)-specific random intercepts, and periodic boundary conditions. See full model specification here: ",
+                                     a("Stan file", href = "https://github.com/andrewGhazi/phenolite/blob/main/shiny/phenoshiny/binom_gp.stan"))
+               ),
+               
                mainPanel(plotOutput('combinedPlot',
-                                    height = '800px'))
+                                    height = '800px')
+               )
                
       ),
       tabPanel("Species view",
@@ -120,7 +125,9 @@ ui <- fluidPage(
                                         value = c(2023, 2026),
                                         step = 1,
                                         ticks = TRUE,
-                                        sep = "")),
+                                        sep = ""),
+                           helpText("Lines in the top panel represent the posterior mode of a temporal Gaussian Process with a global yearly trend, (year:week)-specific random intercepts, and periodic boundary conditions. See full model specification here: ",
+                                     a("Stan file", href = "https://github.com/andrewGhazi/phenolite/blob/main/shiny/phenoshiny/binom_gp.stan"))),
                mainPanel(plotOutput('species_cmbn', 
                                     height = '800px')))
                
@@ -139,9 +146,9 @@ server <- function(input, output) {
     n_phenos = length(jphenos)
     
     # stopifnot("species activity curve can only be shown with one or two phenophases selected" = n_phenos <= 2)
-    if (n_phenos > 2) {
+    if (n_phenos > 3) {
       err_df = data.frame(x = 1, y = 1, 
-                          l = "Error: species activity curve can only be shown with one or two phenophases selected")
+                          l = "Error: species activity curve can only be shown with three or fewer phenophases selected")
 
       err_plot = ggplot(err_df, aes(x,y)) + 
         geom_text(color = "red",
@@ -262,17 +269,18 @@ server <- function(input, output) {
       col_dt$col
     }
     
-    pal_l = list(pals::parula, pals::magma)
+    pal_l = list(pals::parula, pals::magma, pals::viridis)
     
     cmap_df = expand.grid(yr = seq(2023, latest_wk$yr),
                           ph = sphenos) |> 
       mtt(ph_yr = paste(ph, yr, sep = '-'),
           col_val = as.vector(mapply(FUN = get_pal, 
                                      pal_l[1:length(sphenos)], 
-                                     c(88, 90)[1:length(sphenos)]))) |> 
+                                     c(88, 90, 94)[1:length(sphenos)]))) |> 
       sbt(yr >= input$syr_rng[1] & yr <= input$syr_rng[2])
     
     cmap_v = cmap_df$col_val
+    
     names(cmap_v) = cmap_df$ph_yr
     
     zf_cnts |> 
@@ -280,6 +288,7 @@ server <- function(input, output) {
       geom_line(aes(color = pheno_yr, y = fitted),
                 lwd = .7) + 
       geom_point(aes(color = pheno_yr),
+                 data = zf_cnts |> sbt(whichNA(p, TRUE)),
                  pch = 15) + 
       scale_color_manual(values = cmap_v) + 
       theme_bw() + 
@@ -287,7 +296,10 @@ server <- function(input, output) {
            title = paste0("*", input$species, "*"),
            color = NULL) + 
       scale_x_date(labels = scales::label_date("%b"),
-                   breaks = as.Date(paste0("2026-", 1:12, "-15"))) + 
+                   breaks = as.Date(paste0("2026-", 1:12, "-15")),
+                   limits = c(as.Date("2025-12-31"),
+                              as.Date("2027-01-01")),
+                   expand = expansion(add=2)) + 
       theme(panel.grid.minor.x = element_blank(),
             axis.title.y = element_text(margin = margin(0,0,0,0, 'pt')),
             legend.byrow = TRUE,
@@ -340,7 +352,11 @@ server <- function(input, output) {
             strip.text = element_text(margin = margin(0,0,0,0))) + 
       scale_color_manual(values = c("grey", "black")) + 
       scale_x_date(labels = scales::label_date("%b"),
-                   breaks = as.Date(paste0("2026-", 1:12, "-15"))) 
+                   breaks = as.Date(paste0("2026-", 1:12, "-15")),
+                   limits = c(as.Date(paste0(c(2025, 2027), "-",
+                                             c(12, 1), "-",
+                                             c(31, 1)))),
+                   expand = expansion(add=2)) 
     
   }
   
@@ -517,7 +533,10 @@ server <- function(input, output) {
       #           aes(y = fitted), color = 'red') +
       scale_color_manual(values = col_vec) + 
       scale_x_date(labels = scales::label_date("%b"),
-                   breaks = as.Date(paste0("2026-", 1:12, "-15"))) + 
+                   breaks = as.Date(paste0("2026-", 1:12, "-15")),
+                   limits = c(as.Date("2025-12-31"),
+                              as.Date("2027-01-01")),
+                   expand = expansion(add=2)) + 
       ylim(c(0,1)) + 
       theme_bw() + 
       theme(panel.grid.minor.x = element_blank(),
@@ -556,7 +575,10 @@ server <- function(input, output) {
       guides(color = guide_legend(override.aes = list(size = 3))) + 
       scale_color_manual(values = c("grey", "black")) + 
       scale_x_date(labels = scales::label_date("%b"),
-                   breaks = as.Date(paste0("2026-", 1:12, "-15"))) + 
+                   breaks = as.Date(paste0("2026-", 1:12, "-15")),
+                   limits = c(as.Date("2025-12-31"),
+                              as.Date("2027-01-01")),
+                   expand = expansion(add=2)) + 
       theme_bw() + 
       theme(panel.grid.minor.x = element_blank(),
             plot.margin = unit(c(.3,.3,.3,1), "cm"),
