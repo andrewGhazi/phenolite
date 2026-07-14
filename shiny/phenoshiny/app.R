@@ -8,7 +8,9 @@ library(ggtext)
 library(forcats)
 library(patchwork)
 
-source("load_rstan.R")
+library(rstan)
+
+m = readRDS('binom_gp.rds')
 
 to_fct = \(x, genus) {
   x |> 
@@ -104,6 +106,7 @@ ui <- fluidPage(
                                         sep = ""),
                             helpText("Lines in the top panel represent the posterior mode of a temporal Gaussian Process with a global yearly trend, (year:week)-specific random intercepts, and periodic boundary conditions. See full model specification here: ",
                                      a("model file", href = "https://github.com/andrewGhazi/phenolite/blob/main/shiny/phenoshiny/binom_gp.stan")),
+                            helpText("Instances where the activity curve counter-intuitively rises or dips are usually explained by periods with few/no observations. With no data the curve shrinks toward the yearly average."),
                             helpText(p("Data were provided by Earthwise Aware and the participants who contribute to its Biodiversity and Climate participatory science program."),
                                      p("Earthwise Aware ", paste0(lubridate::year(dl_date), ".")," Pheno Lite Data. Data type: Raw Data, Phenology Data. ", min(d$date), "-", max(d$date), " for all sites. Somerville, Massachusetts, USA. Data set accessed ", dl_date, " at earthwiseaware.org."))
                ),
@@ -139,6 +142,7 @@ ui <- fluidPage(
                                         sep = ""),
                             helpText("Lines in the top panel represent the posterior mode of a temporal Gaussian Process with a global yearly trend, (year:week)-specific random intercepts, and periodic boundary conditions. See full model specification here: ",
                                      a("model file", href = "https://github.com/andrewGhazi/phenolite/blob/main/shiny/phenoshiny/binom_gp.stan")),
+                            helpText("Instances where the activity curve counter-intuitively rises or dips are usually explained by periods with few/no observations. With no data the curve shrinks toward the yearly average."),
                             helpText(p("Data were provided by Earthwise Aware and the participants who contribute to its Biodiversity and Climate participatory science program."),
                                      p("Earthwise Aware ", paste0(lubridate::year(dl_date), ".")," Pheno Lite Data. Data type: Raw Data, Phenology Data. ", min(d$date), "-", max(d$date), " for all sites. Somerville, Massachusetts, USA. Data set accessed ", dl_date, " at earthwiseaware.org."))),
                mainPanel(plotOutput('species_cmbn', 
