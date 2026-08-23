@@ -9,5 +9,6 @@ src/cch/
 notes/
 shiny/phenoshiny/*.rds
 shiny/phenoshiny/rsconnect/
+api.env
 
 
