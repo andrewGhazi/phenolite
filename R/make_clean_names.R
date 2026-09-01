@@ -253,4 +253,17 @@ file_copy(out_f,
 
 cli::cli_alert_success("Shiny input formatted file copied to: {shiny_data_dir}")
 
+old_f = dir_ls(shiny_data_dir, regexp = 'adj')
+
+if (length(old_f) > 1) {
+  
+  file_info(old_f) |> 
+    roworder(birth_time) |>
+    head(1) |> 
+    get_elem('path') |> 
+    file_delete()
+  
+  cli::cli_alert_success("Older data file in shiny_data_dir deleted")
+}
+
 # gzip compresses the data by ~8.35x, but increases fread() time by 4.7x
