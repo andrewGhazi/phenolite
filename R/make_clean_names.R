@@ -30,6 +30,7 @@ suppressPackageStartupMessages({
 })
 
 shiny_data_dir = "~/projects/phenolite/shiny/phenoshiny/data"
+
 proj_dir = "~/projects/phenolite"
 
 out_f = f |> 
@@ -41,6 +42,7 @@ out_f = f |>
 d = fread(f) |> 
   janitor::clean_names()
 
+print(head(d))
 
 # add Genus ---------------------------------------------------------------
 
@@ -120,6 +122,11 @@ file_copy(gs_out,
           overwrite = TRUE)
 
 cli::cli_alert_success("Genus species table written to {gs_out}")
+
+if (grepl("\\/", d$date[1])) {
+  d = d |> 
+    mtt(date = as.Date(date, format = "%m/%d/%Y"))
+}
 
 d = d |> 
   slt(-species) |> # pre-existing species column always NA?
@@ -243,5 +250,7 @@ dir_create('shiny/phenoshiny/data')
 file_copy(out_f,
           shiny_data_dir,
           overwrite = TRUE)
+
+cli::cli_alert_success("Shiny input formatted file copied to: {shiny_data_dir}")
 
 # gzip compresses the data by ~8.35x, but increases fread() time by 4.7x
