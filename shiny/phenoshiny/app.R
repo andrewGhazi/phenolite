@@ -25,7 +25,7 @@ to_fct = \(x, genus) {
 # d = fread("data/anecdata_export_EwA_Pheno_Lite_2026-05-28T20-24-36-075Z.csv") |> 
 #   janitor::clean_names()
 
-dpath = "data/adj_2026-07-08T22-44-23-438Z.csv"
+dpath = "data/adj_2026-09-01T01-37-23-301Z.csv"
 
 d = fread(dpath)
 
@@ -70,7 +70,6 @@ pheno_df = rowbind(
 # input$yr_rng = c(2023, 2026)
 # input$syr_rng = c(2023, 2026)
 
-# Define UI for application that draws a histogram
 ui <- fluidPage(
 
     # Application title
