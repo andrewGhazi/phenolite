@@ -43,6 +43,9 @@ get_resp = function() {
   })
   
 }
+
+resp = get_resp()
+
 resp_file = path(data_dir, paste0("api_resp_", Sys.Date()), ext = "RData")
 
 save(resp,
