@@ -25,9 +25,11 @@ to_fct = \(x, genus) {
 # d = fread("data/anecdata_export_EwA_Pheno_Lite_2026-05-28T20-24-36-075Z.csv") |> 
 #   janitor::clean_names()
 
-dpath = "data/adj_2026-09-01T01-37-23-301Z.csv"
+# dpath = "data/adj_2026-09-16T22-55-24-337Z.csv"
+dpath = list.files('data', pattern = "adj_", full.names = TRUE)
 
-d = fread(dpath)
+# d = fread(dpath)
+load(dpath)
 
 dl_date = dpath |> 
   basename() |> 
@@ -60,6 +62,8 @@ pheno_df = rowbind(
   uniq_lf |> slt(full_nm = lf_pheno, cln_nm = cln_lf)
  ) 
 )
+
+# Example input list:
 
 # input = list(genus = "Quercus", flw_phenos = "Flowers")
 # input$species = "Quercus rubra"
@@ -107,7 +111,10 @@ ui <- fluidPage(
                                      a("model file", href = "https://github.com/andrewGhazi/phenolite/blob/main/shiny/phenoshiny/binom_gp.stan")),
                             helpText("Instances where the activity curve counter-intuitively rises or dips are usually explained by periods with few/no observations. With no data the curve shrinks toward the yearly average."),
                             helpText(p("Data were provided by Earthwise Aware and the participants who contribute to its Biodiversity and Climate participatory science program."),
-                                     p("Earthwise Aware ", paste0(lubridate::year(dl_date), ".")," Pheno Lite Data. Data type: Raw Data, Phenology Data. ", min(d$date), "-", max(d$date), " for all sites. Somerville, Massachusetts, USA. Data set accessed ", dl_date, " at earthwiseaware.org."))
+                                     p("Earthwise Aware ", paste0(lubridate::year(dl_date), ".")," Pheno Lite Data. Data type: Raw Data, Phenology Data. ", 
+                                       as.character(min(d$date, na.rm = TRUE)), "-", 
+                                       as.character(max(d$date, na.rm = TRUE)), 
+                                       " for all sites. Somerville, Massachusetts, USA. Data set accessed ", dl_date, " at earthwiseaware.org."))
                ),
                
                mainPanel(plotOutput('combinedPlot',
@@ -143,7 +150,11 @@ ui <- fluidPage(
                                      a("model file", href = "https://github.com/andrewGhazi/phenolite/blob/main/shiny/phenoshiny/binom_gp.stan")),
                             helpText("Instances where the activity curve counter-intuitively rises or dips are usually explained by periods with few/no observations. With no data the curve shrinks toward the yearly average."),
                             helpText(p("Data were provided by Earthwise Aware and the participants who contribute to its Biodiversity and Climate participatory science program."),
-                                     p("Earthwise Aware ", paste0(lubridate::year(dl_date), ".")," Pheno Lite Data. Data type: Raw Data, Phenology Data. ", min(d$date), "-", max(d$date), " for all sites. Somerville, Massachusetts, USA. Data set accessed ", dl_date, " at earthwiseaware.org."))),
+                                     p("Earthwise Aware ", paste0(lubridate::year(dl_date), ".")," Pheno Lite Data. Data type: Raw Data, Phenology Data. ",
+                                       as.character(min(d$date, na.rm = TRUE)), "-", 
+                                       as.character(max(d$date, na.rm = TRUE)), 
+                                       " for all sites. Somerville, Massachusetts, USA. Data set accessed ", 
+                                       as.character(dl_date), " at earthwiseaware.org."))),
                mainPanel(plotOutput('species_cmbn', 
                                     height = '800px'))
                
@@ -180,9 +191,9 @@ server <- function(input, output) {
     
     pd = d |> 
       sbt(yr >= input$syr_rng[1] & yr <= input$syr_rng[2]) |> 
-      sbt(species_2 %==% input$species) |> 
-      slt(c("species_2", "date", "yr", "wk", sphenos)) |> 
-      frename(sp = "species_2") |> 
+      sbt(species %==% input$species) |> 
+      slt(c("species", "date", "yr", "wk", sphenos)) |> 
+      frename(sp = "species") |> 
       pivot(ids = 1:4) |> 
       mtt(obs_ind = fctr(c("not observed", "observed")[value+1])) |> 
       roworder(obs_ind)
@@ -332,9 +343,9 @@ server <- function(input, output) {
     
     pd = d |> 
       sbt(yr >= input$syr_rng[1] & yr <= input$syr_rng[2]) |> 
-      sbt(species_2 %==% input$species) |> 
-      slt(c("species_2", "date", "yr", "wk", sphenos)) |> 
-      frename(sp = "species_2") |> 
+      sbt(species %==% input$species) |> 
+      slt(c("species", "date", "yr", "wk", sphenos)) |> 
+      frename(sp = "species") |> 
       pivot(ids = 1:4) |> 
       mtt(obs_ind = fctr(c("not observed", "observed")[value+1])) |> 
       roworder(obs_ind)
@@ -568,7 +579,7 @@ server <- function(input, output) {
     # Start to differ from above starting here. 
     
     obs_df = sel_obs |> 
-      mtt(gs_fct = to_fct(species_2, input$genus), 
+      mtt(gs_fct = to_fct(species, input$genus), 
           d_hide = as.Date("2026-01-01") + 7*wk - 3.5,
           obs_ind = c("not observed", "observed")[meets_cnd + 1]) |> 
       roworder(meets_cnd)
