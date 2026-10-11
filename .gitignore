@@ -10,5 +10,5 @@ notes/
 shiny/phenoshiny/*.rds
 shiny/phenoshiny/rsconnect/
 api.env
-
+R/deploy_app.R
 
